@@ -56,19 +56,49 @@ class KawalSpider(scrapy.Spider):
             # Wait a bit for dynamic content
             await page.wait_for_timeout(3000)
             
-            # Extract photos
-            photos = await page.evaluate("Array.from(document.querySelectorAll('.foto-kpu div>a')).map(a=>a.href)")
+            # Extract photos with TPS information
+            # We assume the rows correspond to TPS numbers sequentially starting from 1
+            # or we try to find the TPS number in the row.
+            # Based on inspection, the rows seem to correspond to TPS.
             
-            if photos:
-                self.logger.info(f"Found {len(photos)} photos for {response.meta['village_name']}")
-                yield {
-                    "image_urls": photos,
-                    "village_id": response.meta['village_id'],
-                    "village_name": response.meta['village_name'],
-                    "district_name": response.meta['district_name'],
-                    "regency_name": response.meta['regency_name'],
-                    "province_name": response.meta['province_name']
+            items = await page.evaluate("""
+                () => {
+                    const rows = document.querySelectorAll('tr');
+                    const results = [];
+                    rows.forEach((row, index) => {
+                        const photos = Array.from(row.querySelectorAll('.foto-kpu div>a')).map(a => a.href);
+                        if (photos.length > 0) {
+                            // Try to find TPS number in the first cell if it exists, otherwise use index + 1
+                            let tps = (index + 1).toString();
+                            
+                            // Check if there is a specific element for TPS number
+                            // Based on inspection, it wasn't obvious, so we default to index + 1
+                            // But we should pad it to 3 digits
+                            
+                            results.push({
+                                tps_number: tps,
+                                photos: photos
+                            });
+                        }
+                    });
+                    return results;
                 }
+            """)
+            
+            if items:
+                total_photos = sum(len(item['photos']) for item in items)
+                self.logger.info(f"Found {total_photos} photos for {response.meta['village_name']}")
+                
+                for item in items:
+                    yield {
+                        "image_urls": item['photos'],
+                        "tps_number": item['tps_number'],
+                        "village_id": response.meta['village_id'],
+                        "village_name": response.meta['village_name'],
+                        "district_name": response.meta['district_name'],
+                        "regency_name": response.meta['regency_name'],
+                        "province_name": response.meta['province_name']
+                    }
             else:
                 self.logger.info(f"No photos found for {response.meta['village_name']}")
             

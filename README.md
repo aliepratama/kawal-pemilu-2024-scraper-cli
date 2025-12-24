@@ -60,8 +60,14 @@ output/
       └── NAMA KABUPATEN/
           └── NAMA KECAMATAN/
               └── NAMA DESA/
-                  └── hash_filename.jpg
+                  └── raw_<kode_kelurahan>_<nomor_tps>_<hash>.jpg
 ```
+
+Contoh nama file: `raw_1101012001_001_a1b2c.jpg`
+- `1101012001`: Kode Kelurahan/Desa
+- `001`: Nomor TPS (3 digit)
+- `a1b2c`: Hash unik untuk membedakan halaman C1 (jika ada lebih dari 1 foto per TPS)
+
 
 ## Troubleshooting
 - **Error: context/tps.json tidak ditemukan**: Pastikan file `tps.json` ada di dalam folder `context`.
