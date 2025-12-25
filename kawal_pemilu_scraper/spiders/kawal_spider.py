@@ -27,6 +27,12 @@ class KawalSpider(scrapy.Spider):
             url = f"https://kawalpemilu.org/h/{vid}"
             village_name = id2name.get(vid, vid)
             
+            # Extract district ID (first 6 digits of village ID) and get district name
+            # Village ID format: 10 digits (e.g., 6104212001)
+            # District ID format: 6 digits (e.g., 610421)
+            district_id = vid[:6] if len(vid) == 10 else ''
+            district_name = id2name.get(district_id, self.district_name)
+            
             yield scrapy.Request(
                 url,
                 meta={
@@ -34,12 +40,13 @@ class KawalSpider(scrapy.Spider):
                     "playwright_include_page": True,
                     "village_id": vid,
                     "village_name": village_name,
-                    "district_name": self.district_name,
+                    "district_name": district_name,
                     "regency_name": self.regency_name,
                     "province_name": self.province_name
                 },
                 callback=self.parse
             )
+
 
     async def parse(self, response):
         page = response.meta["playwright_page"]
