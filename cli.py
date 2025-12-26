@@ -291,6 +291,9 @@ def main():
         # Set output folder based on download type
         output_folder = 'output_roi' if download_type == 'roi' else 'output'
         
+        # CRITICAL: Create output folder if not exists
+        os.makedirs(output_folder, exist_ok=True)
+        
         cmd = [
             'scrapy', 'crawl', 'kawal_spider',
             '-a', f'village_ids_file={tmp_path}',

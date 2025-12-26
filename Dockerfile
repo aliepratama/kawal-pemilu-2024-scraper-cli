@@ -29,14 +29,11 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Install pipenv
-RUN pip install --no-cache-dir pipenv
+# Copy only requirements first for better caching
+COPY Pipfile ./
 
-# Copy Pipfile and Pipfile.lock (if exists)
-COPY Pipfile Pipfile* ./
-
-# Install Python dependencies
-RUN pipenv install --system --deploy --ignore-pipfile || pipenv install --system
+# Install Python dependencies directly with pip (skip pipenv in Docker)
+RUN pip install --no-cache-dir scrapy playwright scrapy-playwright tqdm questionary
 
 # Install Playwright browsers (only chromium for minimal size)
 RUN playwright install chromium && \
