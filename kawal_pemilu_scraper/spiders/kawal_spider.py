@@ -7,7 +7,8 @@ class KawalSpider(scrapy.Spider):
     name = "kawal_spider"
     allowed_domains = ["kawalpemilu.org", "googleusercontent.com", "lh3.googleusercontent.com"]
     
-    def start_requests(self):
+    async def start(self):
+        """Async start method (replaces deprecated start_requests)"""
         if hasattr(self, 'village_ids_file'):
             with open(self.village_ids_file, 'r') as f:
                 village_ids = f.read().split(',')
@@ -50,15 +51,16 @@ class KawalSpider(scrapy.Spider):
 
     async def parse(self, response):
         page = response.meta["playwright_page"]
+        district_name = response.meta['district_name']
+        village_name = response.meta['village_name']
         
         try:
             # Wait for the main app to load
             try:
                 await page.wait_for_selector("app-root", timeout=10000)
-            except:
-                # If verbose is off, we might not want to see this in logs, but it's a warning.
-                # However, we are suppressing logs in CLI if verbose=False.
-                self.logger.warning(f"Timeout waiting for app-root on {response.url}")
+            except Exception as e:
+                # Log timeout but continue - page might still have loaded content
+                self.logger.debug(f"app-root timeout for {district_name} > {village_name} - continuing anyway")
             
             # Wait a bit for dynamic content
             await page.wait_for_timeout(3000)
@@ -94,7 +96,11 @@ class KawalSpider(scrapy.Spider):
             
             if items:
                 total_photos = sum(len(item['photos']) for item in items)
-                self.logger.info(f"Found {total_photos} photos for {response.meta['village_name']}")
+                district_name = response.meta['district_name']
+                village_name = response.meta['village_name']
+                
+                # Better logging with district + village info
+                self.logger.info(f"Found {total_photos} photos for {district_name} > {village_name}")
                 
                 for item in items:
                     yield {
@@ -107,10 +113,12 @@ class KawalSpider(scrapy.Spider):
                         "province_name": response.meta['province_name']
                     }
             else:
-                self.logger.info(f"No photos found for {response.meta['village_name']}")
+                district_name = response.meta['district_name']
+                village_name = response.meta['village_name']
+                self.logger.info(f"No photos found for {district_name} > {village_name}")
             
-            # Print progress marker to stdout for CLI to pick up
-            print(f"[PROGRESS] {response.meta['village_name']}")
+            # Print progress marker to stdout for CLI to pick up (with district info)
+            print(f"[PROGRESS] {response.meta['district_name']} > {response.meta['village_name']}", flush=True)
             sys.stdout.flush()
                 
         except Exception as e:

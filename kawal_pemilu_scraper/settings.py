@@ -7,6 +7,34 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+# Suppress asyncio warnings on Windows (ProactorEventLoop AssertionError)
+import warnings
+import sys
+import asyncio
+import logging
+
+if sys.platform == 'win32':
+    # Suppress ProactorEventLoop warnings
+    warnings.filterwarnings('ignore', category=DeprecationWarning)
+    warnings.filterwarnings('ignore', message='.*ProactorEventLoop.*')
+    
+    # Set event loop policy for Windows
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+    # Aggressive filter to suppress asyncio error logs
+    class AsyncioErrorFilter(logging.Filter):
+        def filter(self, record):
+            # Suppress AssertionError from asyncio
+            if 'AssertionError' in str(record.getMessage()) and 'asyncio' in record.name:
+                return False
+            if '_ProactorBaseWritePipeTransport' in str(record.getMessage()):
+                return False
+            return True
+    
+    # Apply filter to asyncio logger
+    logging.getLogger('asyncio').addFilter(AsyncioErrorFilter())
+    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+
 BOT_NAME = "kawal_pemilu_scraper"
 
 SPIDER_MODULES = ["kawal_pemilu_scraper.spiders"]

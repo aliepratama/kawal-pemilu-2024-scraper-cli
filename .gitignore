@@ -4,4 +4,5 @@ __pycache__/
 .venv
 Pipfile.lock
 output/
+output2/
 .scrapy/
