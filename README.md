@@ -1,78 +1,230 @@
 # Kawal Pemilu 2024 Scraper CLI
 
-Aplikasi CLI interaktif untuk mengunduh gambar C1 Plano dari website KawalPemilu.org. Aplikasi ini memudahkan pengguna untuk mengunduh data secara massal berdasarkan wilayah (Provinsi, Kabupaten/Kota, Kecamatan).
+CLI tool untuk mengunduh foto C1 Plano dan ROI (Region of Interest) dari website [KawalPemilu.org](https://kawalpemilu.org) secara otomatis menggunakan Scrapy dan Playwright.
 
-## Fitur Utama
-- **Menu Interaktif**: Navigasi mudah dengan keyboard (panah atas/bawah/enter).
-- **Dua Mode Download**:
-  - **Per Kecamatan**: Pilih spesifik kecamatan yang ingin diunduh.
-  - **Satu Kabupaten (Bulk)**: Unduh seluruh desa di satu kabupaten sekaligus.
-- **Progress Bar**: Tampilan status download real-time dengan estimasi waktu.
-- **Struktur Folder Rapi**: Gambar tersimpan otomatis sesuai hierarki wilayah.
-- **Teknologi**: Menggunakan Scrapy dan Playwright untuk menangani website dinamis.
+## Features
 
-## Prasyarat
-- Python 3.10 atau lebih baru
-- Pipenv (Manajer paket Python)
+### Download Modes
+- **Regular C1 Images**: Download foto C1 Plano lengkap (full scan)
+- **ROI Images**: Download cropped regions berisi vote counts (Region of Interest)
 
-## Instalasi
+### Download Scope
+- **Per Kecamatan**: Download satu kecamatan saja
+- **Bulk (Satu Kabupaten)**: Download seluruh kabupaten sekaligus
 
-1. **Clone Repository**
-   ```bash
-   git clone <repository-url>
-   cd kawal-pemilu-2024-scraper-cli
+### Advanced Features
+- ✅ **Resume Detection**: Otomatis detect kecamatan yang sudah didownload dan skip
+- ✅ **Real-time Progress**: Progress bar dengan status kecamatan/desa yang sedang diproses
+- ✅ **Smart Folder Structure**: Organize by `PROVINSI/KABUPATEN/KECAMATAN/DESA/`
+- ✅ **Separate Output**: Regular images → `output/`, ROI images → `output_roi/`
+- ✅ **Windows Compatible**: Suppressed asyncio errors untuk Windows stability
+
+## Installation
+
+### Prerequisites
+- Python 3.8+
+- Pipenv
+
+### Setup
+
+1. Clone repository:
+```bash
+git clone <repository-url>
+cd kawal-pemilu-2024-scraper-cli
+```
+
+2. Install dependencies:
+```bash
+pipenv install
+```
+
+3. Install Playwright browsers:
+```bash
+pipenv run playwright install chromium
+```
+
+## Usage
+
+### Basic Command
+```bash
+pipenv run python cli.py
+```
+
+### Interactive Flow
+
+1. **Select Download Type**
+   ```
+   ? Pilih Tipe Download
+     > Download Image Biasa (Full C1)
+       Download ROI (Region of Interest - KPU only)
    ```
 
-2. **Install Dependencies**
-   Jalankan perintah berikut untuk menginstall semua library yang dibutuhkan:
-   ```bash
-   pipenv install
+2. **Select Download Mode**
+   ```
+   ? Pilih Mode Download
+     > Per Kecamatan
+       Satu Kabupaten (Bulk)
    ```
 
-3. **Install Browser Playwright**
-   Aplikasi membutuhkan browser Chromium untuk merender halaman web:
-   ```bash
-   pipenv run playwright install chromium
+3. **Select Location**
+   - Choose Province → Regency → (District if per-kecamatan)
+
+4. **Resume Detection** (Bulk mode only)
+   ```
+   Ditemukan 5 kecamatan yang sudah pernah didownload:
+     - AIR UPAS (6 desa)
+     - BENUA KAYONG (11 desa)
+   
+   ? Apakah ingin skip kecamatan yang sudah didownload?
+     > Ya (Skip kecamatan yang sudah ada)
+       Tidak (Download ulang semua)
    ```
 
-## Cara Penggunaan
-
-1. **Jalankan Aplikasi**
-   ```bash
-   pipenv run python cli.py
+5. **Verbose Mode**
+   ```
+   ? Aktifkan Log Verbose?
+     > Tidak (Hanya Tampilkan Progress Bar)
+       Ya (Tampilkan Log Lengkap)
    ```
 
-2. **Ikuti Petunjuk di Layar**
-   - Pilih **Mode Download** (Per Kecamatan atau Satu Kabupaten).
-   - Pilih **Provinsi**.
-   - Pilih **Kabupaten/Kota**.
-   - (Jika mode Kecamatan) Pilih **Kecamatan**.
-   - Pilih opsi **Verbose Logging** (Pilih 'Tidak' untuk tampilan bersih dengan progress bar).
+### Progress Display
 
-3. **Tunggu Proses Selesai**
-   Aplikasi akan menampilkan progress bar. Gambar yang berhasil diunduh akan tersimpan di folder `output`.
+**Non-verbose mode** (recommended):
+```
+Download [AIR UPAS > SARI BEKAYAS]: 15%|███| 82/545 [01:23<07:45]
+```
 
-## Struktur Output
-File gambar akan disimpan secara otomatis dengan struktur folder berikut:
+**Verbose mode** (for debugging):
+```
+2025-12-26 14:15:09 [kawal_spider] INFO: Found 13 ROI photos for AIR UPAS > AIR UPAS
+```
+
+## Output Structure
+
+### Regular C1 Images
 ```
 output/
-  └── NAMA PROVINSI/
-      └── NAMA KABUPATEN/
-          └── NAMA KECAMATAN/
-              └── NAMA DESA/
-                  └── raw_<kode_kelurahan>_<nomor_tps>_<hash>.jpg
+├── KALIMANTAN BARAT/
+│   └── KETAPANG/
+│       ├── AIR UPAS/
+│       │   ├── AIR UPAS/
+│       │   │   ├── raw_6104212001_001_12345.jpg
+│       │   │   └── raw_6104212001_002_12346.jpg
+│       │   └── SARI BEKAYAS/
+│       └── BENUA KAYONG/
 ```
 
-Contoh nama file: `raw_1101012001_001_a1b2c.jpg`
-- `1101012001`: Kode Kelurahan/Desa
-- `001`: Nomor TPS (3 digit)
-- `a1b2c`: Hash unik untuk membedakan halaman C1 (jika ada lebih dari 1 foto per TPS)
+### ROI Images
+```
+output_roi/
+├── KALIMANTAN BARAT/
+│   └── KETAPANG/
+│       ├── AIR UPAS/
+│       │   ├── AIR UPAS/
+│       │   │   ├── raw_6104212001_001_67890.webp
+│       │   │   └── raw_6104212001_002_67891.webp
+```
 
+## Technical Details
+
+### Architecture
+- **Scrapy**: Web scraping framework
+- **Playwright**: Browser automation for JavaScript rendering
+- **Questionary**: Interactive CLI prompts
+- **TQDM**: Progress bar display
+
+### ROI Image Extraction
+ROI images are extracted from `div` element `id` attributes containing Google Cloud Storage URLs:
+```
+https://storage.googleapis.com/kawalc1/static/2024/transformed/{location_id}/{tps}/extracted/{hash}=s1280~paslon.webp
+```
+
+URLs are automatically decoded (`%3D` → `=`) to prevent double-encoding issues in Scrapy pipeline.
+
+### Resume Detection Logic
+1. Scans output folder for existing district directories
+2. Groups villages by district from village IDs (first 6 digits)
+3. Offers option to skip completed districts
+4. Filters village list to exclude skipped districts
+
+### Progress Tracking
+- Progress markers: `[PROGRESS] DISTRICT > VILLAGE`
+- Unbuffered output: `PYTHONUNBUFFERED=1`
+- Real-time tqdm updates with district/village info
+- Always prints even when no photos found
 
 ## Troubleshooting
-- **Error: context/tps.json tidak ditemukan**: Pastikan file `tps.json` ada di dalam folder `context`.
-- **Timeout**: Jika koneksi lambat, scraper mungkin mengalami timeout. Coba jalankan ulang dengan koneksi yang lebih stabil.
-- **Verbose Mode**: Jika mengalami masalah, aktifkan mode "Ya (Tampilkan Log Lengkap)" untuk melihat detail error.
 
-## Disclaimer
-Aplikasi ini dibuat untuk tujuan edukasi dan pengumpulan data publik. Gunakan dengan bijak dan bertanggung jawab.
+### Playwright Installation Issues
+```bash
+pipenv run playwright install --force chromium
+```
+
+### AsyncIO Errors on Windows
+Already suppressed via:
+- `WindowsSelectorEventLoopPolicy`
+- Custom `StderrFilter` class
+- Debug-level timeout warnings
+
+### Slow ROI Downloads
+ROI mode may be slower because:
+- Not all TPS have ROI images (only KPU-verified ones)
+- Each page requires JavaScript evaluation
+- Progress updates after each village completion
+
+### Resume Not Working
+Ensure you're using the same download type:
+- Regular mode checks `output/`
+- ROI mode checks `output_roi/`
+
+## Development
+
+### Project Structure
+```
+kawal-pemilu-2024-scraper-cli/
+├── cli.py                          # Main CLI interface
+├── context/
+│   └── tps.json                    # Location and ID mappings
+├── kawal_pemilu_scraper/
+│   ├── spiders/
+│   │   └── kawal_spider.py         # Main spider logic
+│   ├── pipelines.py                # Image download pipeline
+│   ├── settings.py                 # Scrapy settings
+│   └── middlewares.py              # Custom middlewares
+├── output/                         # Regular C1 images
+├── output_roi/                     # ROI images
+└── README.md
+```
+
+### Key Components
+
+**Spider (`kawal_spider.py`)**:
+- Async `start()` method (Scrapy 2.13+)
+- Conditional extraction: regular vs ROI
+- District name mapping from village IDs
+- URL decoding for ROI images
+
+**CLI (`cli.py`)**:
+- Interactive prompts (questionary)
+- Resume detection logic
+- Progress bar management (tqdm)
+- Subprocess management with unbuffered output
+
+**Settings (`settings.py`)**:
+- AsyncIO policy for Windows
+- Playwright configuration
+- Image pipeline settings
+- Concurrent requests tuning
+
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Acknowledgments
+
+- Data source: [KawalPemilu.org](https://kawalpemilu.org)
+- Built with [Scrapy](https://scrapy.org/) and [Playwright](https://playwright.dev/)
