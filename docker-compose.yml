@@ -14,7 +14,7 @@ services:
       - ./context:/app/context:ro
     environment:
       - PYTHONUNBUFFERED=1
-    # Use interactive mode by default
+      - TERM=xterm-256color  # Better terminal support for questionary
+    # IMPORTANT: Run with: docker-compose run --rm scraper
+    # Do NOT use: docker-compose up (doesn't allocate proper TTY)
     command: python cli.py
-    # For non-interactive usage, you can override with:
-    # docker-compose run --rm scraper python cli.py

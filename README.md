@@ -74,12 +74,23 @@ If you prefer using Docker:
 docker-compose build
 ```
 
-2. Run the scraper:
+2. Run the scraper interactively:
 ```bash
 docker-compose run --rm scraper
 ```
 
+> **Important:** Use `docker-compose run` (not `docker-compose up`) for interactive questionary prompts to work correctly.
+
 The scraper will run interactively inside the container. Downloaded images will be automatically saved to `output/` and `output_roi/` folders on your host machine.
+
+**Alternative: Direct docker run**
+```bash
+docker run -it --rm \
+  -v $(pwd)/output:/app/output \
+  -v $(pwd)/output_roi:/app/output_roi \
+  -v $(pwd)/context:/app/context:ro \
+  kawal-pemilu-2024-scraper-cli-scraper
+```
 
 **Advantages:**
 - ✅ No need to install Python, Pipenv, or Playwright locally
