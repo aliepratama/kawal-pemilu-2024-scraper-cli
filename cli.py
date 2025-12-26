@@ -139,6 +139,23 @@ def main():
     print("==================================================")
     print()
     
+    # Select Download Type
+    download_type = questionary.select(
+        'Pilih Tipe Download',
+        choices=[
+            questionary.Choice('Download Image Biasa (Full C1)', value='regular'),
+            questionary.Choice('Download ROI (Region of Interest - KPU only)', value='roi')
+        ]
+    ).ask()
+    
+    if not download_type: return
+    
+    clear_screen()
+    print("==================================================")
+    print("       KAWAL PEMILU 2024 SCRAPER CLI")
+    print("==================================================")
+    print()
+    
     # Select Mode
     mode = questionary.select(
         'Pilih Mode Download',
@@ -193,8 +210,10 @@ def main():
     print(f'Ditemukan {len(village_ids)} desa.')
     
     # Resume Detection - Check for existing district folders in output
+    # Use different output folder based on download_type
     if mode == 'regency':
-        output_path = os.path.join('output', provinces[province_id], regencies[regency_id])
+        output_folder = 'output_roi' if download_type == 'roi' else 'output'
+        output_path = os.path.join(output_folder, provinces[province_id], regencies[regency_id])
         existing_districts = []
         
         if os.path.exists(output_path):
@@ -269,13 +288,18 @@ def main():
         tmp_path = tmp.name
     
     try:
+        # Set output folder based on download type
+        output_folder = 'output_roi' if download_type == 'roi' else 'output'
+        
         cmd = [
             'scrapy', 'crawl', 'kawal_spider',
             '-a', f'village_ids_file={tmp_path}',
             '-a', f'district_name={district_name}',
+            '-a', f'download_type={download_type}',
             '-a', f'regency_name={regencies[regency_id]}',
             '-a', f'province_name={provinces[province_id]}',
-            '-a', f'verbose={str(verbose)}'
+            '-a', f'verbose={str(verbose)}',
+            '-s', f'IMAGES_STORE={output_folder}'
         ]
         
         if not verbose:

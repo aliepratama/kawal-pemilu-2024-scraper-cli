@@ -2,10 +2,11 @@ import scrapy
 import json
 import os
 import sys
+from urllib.parse import unquote
 
 class KawalSpider(scrapy.Spider):
     name = "kawal_spider"
-    allowed_domains = ["kawalpemilu.org", "googleusercontent.com", "lh3.googleusercontent.com"]
+    allowed_domains = ["kawalpemilu.org", "googleusercontent.com", "lh3.googleusercontent.com", "googleapis.com", "storage.googleapis.com"]
     
     async def start(self):
         """Async start method (replaces deprecated start_requests)"""
@@ -65,34 +66,74 @@ class KawalSpider(scrapy.Spider):
             # Wait a bit for dynamic content
             await page.wait_for_timeout(3000)
             
-            # Extract photos with TPS information
-            # We assume the rows correspond to TPS numbers sequentially starting from 1
-            # or we try to find the TPS number in the row.
-            # Based on inspection, the rows seem to correspond to TPS.
+            # Determine download type (default to regular if not specified)
+            download_type = getattr(self, 'download_type', 'regular')
             
-            items = await page.evaluate("""
-                () => {
-                    const rows = document.querySelectorAll('tr');
-                    const results = [];
-                    rows.forEach((row, index) => {
-                        const photos = Array.from(row.querySelectorAll('.foto-kpu div>a')).map(a => a.href);
-                        if (photos.length > 0) {
-                            // Try to find TPS number in the first cell if it exists, otherwise use index + 1
-                            let tps = (index + 1).toString();
+            # Extract photos with TPS information
+            # Download type decides which URLs to extract:
+            # - 'regular': Full C1 images from .foto-kpu div>a links
+            # - 'roi': ROI images from div id attributes (KPU photos only)
+            
+            if download_type == 'roi':
+                # Extract ROI image URLs from div id attributes
+                # All images have ROI, not just KPU-labeled ones
+                items = await page.evaluate("""
+                    () => {
+                        const results = [];
+                        
+                        // Find all rows with photos
+                        const rows = document.querySelectorAll('tr');
+                        
+                        rows.forEach((row, index) => {
+                            // Find all divs with id starting with https://storage.googleapis.com
+                            // These contain ROI URLs for ALL photos (not just KPU)
+                            const roiDivs = Array.from(row.querySelectorAll('div[id^="https://storage.googleapis.com"]'));
                             
-                            // Check if there is a specific element for TPS number
-                            // Based on inspection, it wasn't obvious, so we default to index + 1
-                            // But we should pad it to 3 digits
-                            
-                            results.push({
-                                tps_number: tps,
-                                photos: photos
-                            });
-                        }
-                    });
-                    return results;
-                }
-            """)
+                            if (roiDivs.length > 0) {
+                                // URLs in div id may be URL-encoded (e.g. %3D for =)
+                                // Return them as-is, we'll decode in Python
+                                const roiUrls = roiDivs.map(div => div.id);
+                                let tps = (index + 1).toString();
+                                
+                                results.push({
+                                    tps_number: tps,
+                                    photos: roiUrls
+                                });
+                            }
+                        });
+                        
+                        // Debug: log extraction results
+                        console.log('[ROI DEBUG] Total rows scanned:', rows.length);
+                        console.log('[ROI DEBUG] Rows with ROI images:', results.length);
+                        
+                        return results;
+                    }
+                """)
+            else:
+                # Extract regular C1 image URLs (current logic)
+                items = await page.evaluate("""
+                    () => {
+                        const rows = document.querySelectorAll('tr');
+                        const results = [];
+                        rows.forEach((row, index) => {
+                            const photos = Array.from(row.querySelectorAll('.foto-kpu div>a')).map(a => a.href);
+                            if (photos.length > 0) {
+                                // Try to find TPS number in the first cell if it exists, otherwise use index + 1
+                                let tps = (index + 1).toString();
+                                
+                                // Check if there is a specific element for TPS number
+                                // Based on inspection, it wasn't obvious, so we default to index + 1
+                                // But we should pad it to 3 digits
+                                
+                                results.push({
+                                    tps_number: tps,
+                                    photos: photos
+                                });
+                            }
+                        });
+                        return results;
+                    }
+                """)
             
             if items:
                 total_photos = sum(len(item['photos']) for item in items)
@@ -100,11 +141,18 @@ class KawalSpider(scrapy.Spider):
                 village_name = response.meta['village_name']
                 
                 # Better logging with district + village info
-                self.logger.info(f"Found {total_photos} photos for {district_name} > {village_name}")
+                mode_label = "ROI" if download_type == 'roi' else "C1"
+                self.logger.info(f"Found {total_photos} {mode_label} photos for {district_name} > {village_name}")
                 
                 for item in items:
+                    # Decode ROI URLs to prevent double-encoding by Scrapy
+                    photos = item['photos']
+                    if download_type == 'roi':
+                        # ROI URLs contain %3D which needs to be unquoted to =
+                        photos = [unquote(url) for url in photos]
+                    
                     yield {
-                        "image_urls": item['photos'],
+                        "image_urls": photos,
                         "tps_number": item['tps_number'],
                         "village_id": response.meta['village_id'],
                         "village_name": response.meta['village_name'],
@@ -115,9 +163,10 @@ class KawalSpider(scrapy.Spider):
             else:
                 district_name = response.meta['district_name']
                 village_name = response.meta['village_name']
-                self.logger.info(f"No photos found for {district_name} > {village_name}")
+                mode_label = "ROI" if download_type == 'roi' else "C1"
+                self.logger.info(f"No {mode_label} photos found for {district_name} > {village_name}")
             
-            # Print progress marker to stdout for CLI to pick up (with district info)
+            # ALWAYS print progress marker (even if no photos) for CLI to track
             print(f"[PROGRESS] {response.meta['district_name']} > {response.meta['village_name']}", flush=True)
             sys.stdout.flush()
                 
