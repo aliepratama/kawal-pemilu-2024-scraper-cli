@@ -23,7 +23,7 @@ CLI tool untuk mengunduh foto C1 Plano dan ROI (Region of Interest) dari website
 
 ### Prerequisites
 - Python 3.8+
-- Pipenv
+- Pipenv (install via `pip install pipenv`)
 
 ### Setup
 
@@ -38,10 +38,32 @@ cd kawal-pemilu-2024-scraper-cli
 pipenv install
 ```
 
-3. Install Playwright browsers:
+3. **Verify Playwright package is installed:**
+```bash
+# Check if playwright is in the dependencies
+pipenv run pip list | grep playwright
+```
+
+If you don't see `playwright` in the list, install it manually:
+```bash
+pipenv install playwright
+```
+
+4. Install Playwright browsers:
 ```bash
 pipenv run playwright install chromium
 ```
+
+> **Important:** Steps 2-4 must be run on **every new machine/environment**. Playwright browsers are installed locally per environment.
+
+### Verify Installation
+
+Test if everything is installed correctly:
+```bash
+pipenv run python -c "from playwright.sync_api import sync_playwright; print('Playwright OK')"
+```
+
+If successful, you'll see `Playwright OK`.
 
 ## Usage
 
@@ -155,27 +177,63 @@ URLs are automatically decoded (`%3D` → `=`) to prevent double-encoding issues
 
 ## Troubleshooting
 
-### Playwright Installation Issues
-```bash
-pipenv run playwright install --force chromium
+### 'playwright' is not recognized
+
+**Error:**
+```
+'playwright' is not recognized as an internal or external command
 ```
 
-### AsyncIO Errors on Windows
-Already suppressed via:
-- `WindowsSelectorEventLoopPolicy`
-- Custom `StderrFilter` class
-- Debug-level timeout warnings
+**Solution:**
+This means Playwright package hasn't been installed. Follow these steps **in order**:
 
-### Slow ROI Downloads
-ROI mode may be slower because:
-- Not all TPS have ROI images (only KPU-verified ones)
-- Each page requires JavaScript evaluation
-- Progress updates after each village completion
+```bash
+# Step 1: Make sure you're in the project directory
+cd kawal-pemilu-2024-scraper-cli
 
-### Resume Not Working
-Ensure you're using the same download type:
-- Regular mode checks `output/`
-- ROI mode checks `output_roi/`
+# Step 2: Verify virtual environment exists
+pipenv --venv
+# Should show a path like: C:\Users\...\virtualenvs\kawal-pemilu-...
+
+# Step 3: Install dependencies from Pipfile
+pipenv install
+
+# Step 4: Verify playwright package is installed
+pipenv run pip list | findstr playwright
+# Should show: playwright x.x.x
+
+# Step 5: If playwright is NOT in the list, install it explicitly
+pipenv install playwright
+
+# Step 6: Now install Playwright browsers
+pipenv run playwright install chromium
+
+# Step 7: Verify installation
+pipenv run python -c "from playwright.sync_api import sync_playwright; print('OK')"
+```
+
+**Important:** ALWAYS use `pipenv run` prefix when running commands in this project.
+
+### Playwright Installation Issues
+
+If `playwright install` fails:
+```bash
+# Force reinstall
+pipenv run playwright install --force chromium
+
+# Or install all browsers
+pipenv run playwright install
+```
+
+### Dependencies Not Found
+
+If you get import errors after cloning on a new machine:
+```bash
+# Recreate virtual environment
+pipenv --rm
+pipenv install
+pipenv run playwright install chromium
+```
 
 ## Development
 
