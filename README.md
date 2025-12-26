@@ -65,6 +65,27 @@ pipenv run python -c "from playwright.sync_api import sync_playwright; print('Pl
 
 If successful, you'll see `Playwright OK`.
 
+### Docker Setup (Alternative)
+
+If you prefer using Docker:
+
+1. Build the Docker image:
+```bash
+docker-compose build
+```
+
+2. Run the scraper:
+```bash
+docker-compose run --rm scraper
+```
+
+The scraper will run interactively inside the container. Downloaded images will be automatically saved to `output/` and `output_roi/` folders on your host machine.
+
+**Advantages:**
+- ✅ No need to install Python, Pipenv, or Playwright locally
+- ✅ Consistent environment across all machines
+- ✅ Easy cleanup (`docker-compose down`)
+
 ## Usage
 
 ### Basic Command

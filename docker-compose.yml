@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  scraper:
+    build: .
+    container_name: kawal-pemilu-scraper
+    stdin_open: true  # Keep STDIN open for interactive CLI
+    tty: true         # Allocate a pseudo-TTY for interactive mode
+    volumes:
+      # Mount output directories to persist downloaded images
+      - ./output:/app/output
+      - ./output_roi:/app/output_roi
+      # Mount context for location data (read-only)
+      - ./context:/app/context:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Use interactive mode by default
+    command: python cli.py
+    # For non-interactive usage, you can override with:
+    # docker-compose run --rm scraper python cli.py
