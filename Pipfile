@@ -4,13 +4,16 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-scrapy = "*"
-playwright = "*"
-scrapy-playwright = "*"
-tqdm = "*"
-questionary = "*"
+kawal-pemilu-scraper = {extras = ["extraction"], file = ".", editable = true}
 
 [dev-packages]
+kawal-pemilu-scraper = {path = ".", editable = true, extras = ["all"]}
+
+[scripts]
+# Helpful scripts
+scrape = "python cli.py"
+install-extraction = "pipenv install -e \".[extraction]\""
+install-dev = "pipenv install --dev"
 
 [requires]
 python_version = "3.12"

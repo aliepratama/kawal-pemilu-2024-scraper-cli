@@ -1,9 +1,47 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
 .env
 .venv
+env/
+venv/
+
+# Pipenv
 Pipfile.lock
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Backup and temporary files
+*_old.py
+*_backup.py
+*.bak
+*.tmp
+
+# Output directories
 output/
 output2/
 output_roi/
+output_digits/
+
+# Scrapy
 .scrapy/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

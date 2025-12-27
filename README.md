@@ -12,6 +12,13 @@ CLI tool untuk mengunduh foto C1 Plano dan ROI (Region of Interest) dari website
 - **Per Kecamatan**: Download satu kecamatan saja
 - **Bulk (Satu Kabupaten)**: Download seluruh kabupaten sekaligus
 
+### Auto-Cropping (NEW ✨)
+- **Digit Extraction**: Automatic cropping of individual vote digits using YOLOv11 segmentation
+- **Paslon Rows**: Extract combined 3-digit images per candidate
+- **Border Processing**: Two modes (with/without border) for different digit styles
+- **Modular Architecture**: Dependency injection pattern for extensibility
+- **Performance Metrics**: Real-time benchmarking and progress tracking
+
 ### Advanced Features
 - ✅ **Resume Detection**: Otomatis detect kecamatan yang sudah didownload dan skip
 - ✅ **Real-time Progress**: Progress bar dengan status kecamatan/desa yang sedang diproses
@@ -22,48 +29,65 @@ CLI tool untuk mengunduh foto C1 Plano dan ROI (Region of Interest) dari website
 ## Installation
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.9+
 - Pipenv (install via `pip install pipenv`)
 
-### Setup
+### Quick Start
 
-1. Clone repository:
 ```bash
+# Clone repository
 git clone <repository-url>
 cd kawal-pemilu-2024-scraper-cli
+
+# Install core dependencies only (scraping features)
+pipenv install
+
+# Install Playwright browsers
+pipenv run playwright install chromium
 ```
 
-2. Install dependencies:
+### Installation Options
+
+Project ini menggunakan **modular dependencies** - install hanya package yang Anda butuhkan:
+
+#### 1️⃣ Core Only (Scraping Features)
 ```bash
 pipenv install
 ```
+**Includes**: scrapy, questionary, tqdm, playwright  
+**Use for**: Download C1/ROI images only
 
-3. **Verify Playwright package is installed:**
+#### 2️⃣ With Auto-Cropping Features
 ```bash
-# Check if playwright is in the dependencies
-pipenv run pip list | grep playwright
+pipenv install -e ".[extraction]"
 ```
+**Includes**: Core + ultralytics, opencv-python, numpy, torch  
+**Use for**: Download + auto-crop vote digits
 
-If you don't see `playwright` in the list, install it manually:
+#### 3️⃣ Development (All Features)
 ```bash
-pipenv install playwright
+pipenv install --dev
 ```
+**Includes**: Core + extraction + pytest, black, flake8  
+**Use for**: Development and testing
 
-4. Install Playwright browsers:
+### Post-Installation
+
+After installing dependencies, install Playwright browsers:
 ```bash
 pipenv run playwright install chromium
 ```
 
-> **Important:** Steps 2-4 must be run on **every new machine/environment**. Playwright browsers are installed locally per environment.
-
 ### Verify Installation
 
-Test if everything is installed correctly:
+Test if everything works:
 ```bash
+# Test Playwright
 pipenv run python -c "from playwright.sync_api import sync_playwright; print('Playwright OK')"
-```
 
-If successful, you'll see `Playwright OK`.
+# Test extraction features (optional, if installed)
+pipenv run python -c "from jumlah_suara_extractor import create_injector; print('Extraction OK')"
+```
 
 ### Docker Setup (Alternative)
 
@@ -152,6 +176,42 @@ Download [AIR UPAS > SARI BEKAYAS]: 15%|███| 82/545 [01:23<07:45]
 ```
 2025-12-26 14:15:09 [kawal_spider] INFO: Found 13 ROI photos for AIR UPAS > AIR UPAS
 ```
+
+### Auto-Cropping Workflow (NEW ✨)
+
+Setelah download ROI images, Anda bisa auto-crop digit angka suara:
+
+1. **Run CLI dan pilih Auto Crop**
+   ```bash
+   pipenv run python cli.py
+   ```
+   Pilih: `✂️  Auto Crop Jumlah Suara`
+
+2. **Select Province**
+   - Sistem otomatis detect provinsi yang tersedia di `output_roi/`
+   - Pilih provinsi yang ingin di-crop
+
+3. **Border Mode**
+   - **With Border**: Untuk digit dengan border tebal
+   - **Without Border**: Untuk digit tanpa border/border tipis
+
+4. **Duplicate Naming**
+   - **Double notation**: `9.jpg, 99.jpg, 999.jpg`
+   - **Sequential**: `9_1.jpg, 9_2.jpg, 9_3.jpg`
+
+5. **Performance Preview**
+   - Benchmark pada 5 sample images
+   - Review estimasi waktu total
+
+6. **Output Structure**
+   - **Structured**: Mirror struktur `output_roi/`
+   - **Flat**: Semua digit dalam 1 folder
+
+**Output per TPS**: 12 files
+- 9 individual digit images: `raw_<kode>_<tps>_<paslon>_pos1.jpg`
+- 3 paslon row images: `raw_<kode>_<tps>_<paslon>.jpg`
+
+> **Note**: Untuk fitur auto-cropping, install dengan: `pipenv install -e ".[extraction]"`
 
 ## Output Structure
 
@@ -273,6 +333,8 @@ pipenv run playwright install chromium
 ```
 kawal-pemilu-2024-scraper-cli/
 ├── cli.py                          # Main CLI interface
+├── setup.py                        # Package configuration with extras
+├── Pipfile                         # Dependency management
 ├── context/
 │   └── tps.json                    # Location and ID mappings
 ├── kawal_pemilu_scraper/
@@ -281,9 +343,46 @@ kawal-pemilu-2024-scraper-cli/
 │   ├── pipelines.py                # Image download pipeline
 │   ├── settings.py                 # Scrapy settings
 │   └── middlewares.py              # Custom middlewares
+├── jumlah_suara_extractor/         # Auto-cropping module (DI architecture)
+│   ├── __init__.py                 # Exports create_injector
+│   ├── injector.py                 # Dependency injection container
+│   ├── core/                       # Business logic
+│   │   ├── cropper.py             # DigitCropper with DI
+│   │   ├── processors.py          # Border processing strategies
+│   │   └── interfaces.py          # Abstract interfaces
+│   ├── utils/                      # Utility functions
+│   │   ├── naming.py              # Filename generation
+│   │   ├── file_ops.py            # File operations
+│   │   └── metrics.py             # Performance tracking
+│   ├── services/                   # High-level services
+│   │   ├── province_service.py    # Province detection
+│   │   └── extraction_service.py  # Extraction orchestration
+│   ├── config/                     # Configuration
+│   │   └── settings.py            # Settings dataclass
+│   └── weights/                    # YOLOv11 model weights
 ├── output/                         # Regular C1 images
 ├── output_roi/                     # ROI images
 └── README.md
+```
+
+### Modular Dependencies
+
+The project uses `setup.py` with dependency groups:
+
+**Core** (always installed):
+- scrapy, questionary, tqdm, playwright
+
+**Extraction** (optional):
+- ultralytics, opencv-python, numpy, torch
+
+**Dev** (optional):
+- pytest, black, flake8, mypy
+
+Install specific groups:
+```bash
+pipenv install -e ".[extraction]"  # Core + extraction
+pipenv install -e ".[dev]"         # Core + dev tools
+pipenv install --dev                # All features
 ```
 
 ### Key Components
