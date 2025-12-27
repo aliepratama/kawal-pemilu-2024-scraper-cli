@@ -19,17 +19,24 @@ CLI tool untuk mengunduh foto C1 Plano dan ROI (Region of Interest) dari website
 - **Modular Architecture**: Dependency injection pattern for extensibility
 - **Performance Metrics**: Real-time benchmarking and progress tracking
 
+### Architecture Highlights (NEW 🎯)
+- ✅ **Modular CLI**: Refactored from 600+ to 130 lines using service-oriented architecture
+- ✅ **Dependency Injection**: Clean separation of concerns with DI pattern
+- ✅ **Service Layer**: MenuService, DownloadService, AutoCropService, ProgressService
+- ✅ **Lazy Loading**: Optional dependencies loaded only when needed
+- ✅ **Docker Support**: Two Dockerfiles (core-only and full-featured)
+
 ### Advanced Features
 - ✅ **Resume Detection**: Otomatis detect kecamatan yang sudah didownload dan skip
 - ✅ **Real-time Progress**: Progress bar dengan status kecamatan/desa yang sedang diproses
 - ✅ **Smart Folder Structure**: Organize by `PROVINSI/KABUPATEN/KECAMATAN/DESA/`
-- ✅ **Separate Output**: Regular images → `output/`, ROI images → `output_roi/`
+- ✅ **Separate Output**: Regular images → `output/`, ROI images → `output_roi/`, Digits → `output_digits/`
 - ✅ **Windows Compatible**: Suppressed asyncio errors untuk Windows stability
 
 ## Installation
 
 ### Prerequisites
-- Python 3.9+
+- Python 3.12+
 - Pipenv (install via `pip install pipenv`)
 
 ### Quick Start
@@ -91,35 +98,40 @@ pipenv run python -c "from jumlah_suara_extractor import create_injector; print(
 
 ### Docker Setup (Alternative)
 
-If you prefer using Docker:
+Project menyediakan **2 Docker images** untuk kebutuhan berbeda:
 
-1. Build the Docker image:
+#### Option 1: Core Only (Scraping Features)
 ```bash
+# Build lightweight image (~500MB)
 docker-compose build
-```
 
-2. Run the scraper interactively:
-```bash
+# Run interactively
 docker-compose run --rm scraper
 ```
 
-> **Important:** Use `docker-compose run` (not `docker-compose up`) for interactive questionary prompts to work correctly.
-
-The scraper will run interactively inside the container. Downloaded images will be automatically saved to `output/` and `output_roi/` folders on your host machine.
-
-**Alternative: Direct docker run**
+#### Option 2: Full Features (With Auto-Crop)
 ```bash
+# Build complete image with YOLO (~2GB+)
+docker build -f Dockerfile.extraction -t kawal-pemilu-scraper:extraction .
+
+# Run with all features
 docker run -it --rm \
   -v $(pwd)/output:/app/output \
   -v $(pwd)/output_roi:/app/output_roi \
-  -v $(pwd)/context:/app/context:ro \
-  kawal-pemilu-2024-scraper-cli-scraper
+  -v $(pwd)/output_digits:/app/output_digits \
+  -v $(pwd)/cli_core/context:/app/cli_core/context:ro \
+  kawal-pemilu-scraper:extraction
 ```
+
+> **Important:** Always use `docker-compose run` or `docker run -it` for interactive questionary prompts.
+
+**See [DOCKER.md](DOCKER.md) for comprehensive Docker documentation.**
 
 **Advantages:**
 - ✅ No need to install Python, Pipenv, or Playwright locally
 - ✅ Consistent environment across all machines
-- ✅ Easy cleanup (`docker-compose down`)
+- ✅ Easy cleanup and image management
+- ✅ Choose lightweight (core) or full-featured (extraction) setup
 
 ## Usage
 
@@ -332,36 +344,58 @@ pipenv run playwright install chromium
 ### Project Structure
 ```
 kawal-pemilu-2024-scraper-cli/
-├── cli.py                          # Main CLI interface
+├── cli.py                          # Main CLI entry point (~130 lines)
 ├── setup.py                        # Package configuration with extras
 ├── Pipfile                         # Dependency management
-├── context/
-│   └── tps.json                    # Location and ID mappings
-├── kawal_pemilu_scraper/
+├── Dockerfile                      # Core-only Docker image
+├── Dockerfile.extraction           # Full-featured Docker image
+├── docker-compose.yml              # Docker orchestration
+├── DOCKER.md                       # Docker usage guide
+│
+├── cli_core/                       # 🆕 Modular CLI package (DI pattern)
+│   ├── __init__.py                # Exports create_cli_injector
+│   ├── injector.py                # CLI DI container
+│   ├── config/
+│   │   └── settings.py           # CLISettings dataclass
+│   ├── context/                  # 🆕 Moved from root
+│   │   └── tps.json             # Location and ID mappings
+│   ├── utils/
+│   │   ├── display.py           # Screen clearing, headers
+│   │   └── data_provider.py     # LocationDataProvider
+│   └── services/
+│       ├── menu_service.py      # Interactive prompts (questionary)
+│       ├── download_service.py  # Scrapy orchestration
+│       ├── autocrop_service.py  # Extraction workflow
+│       └── progress_service.py  # Progress tracking (tqdm)
+│
+├── kawal_pemilu_scraper/          # Scrapy spider
 │   ├── spiders/
-│   │   └── kawal_spider.py         # Main spider logic
-│   ├── pipelines.py                # Image download pipeline
-│   ├── settings.py                 # Scrapy settings
-│   └── middlewares.py              # Custom middlewares
-├── jumlah_suara_extractor/         # Auto-cropping module (DI architecture)
-│   ├── __init__.py                 # Exports create_injector
-│   ├── injector.py                 # Dependency injection container
-│   ├── core/                       # Business logic
-│   │   ├── cropper.py             # DigitCropper with DI
-│   │   ├── processors.py          # Border processing strategies
-│   │   └── interfaces.py          # Abstract interfaces
-│   ├── utils/                      # Utility functions
-│   │   ├── naming.py              # Filename generation
-│   │   ├── file_ops.py            # File operations
-│   │   └── metrics.py             # Performance tracking
-│   ├── services/                   # High-level services
-│   │   ├── province_service.py    # Province detection
-│   │   └── extraction_service.py  # Extraction orchestration
-│   ├── config/                     # Configuration
-│   │   └── settings.py            # Settings dataclass
-│   └── weights/                    # YOLOv11 model weights
-├── output/                         # Regular C1 images
-├── output_roi/                     # ROI images
+│   │   └── kawal_spider.py       # Main spider logic
+│   ├── pipelines.py              # Image download pipeline
+│   ├── settings.py               # Scrapy settings
+│   └── middlewares.py            # Custom middlewares
+│
+├── jumlah_suara_extractor/        # Auto-cropping module (DI architecture)
+│   ├── __init__.py               # Exports create_injector
+│   ├── injector.py               # Extraction DI container
+│   ├── core/                     # Business logic
+│   │   ├── cropper.py           # DigitCropper with DI
+│   │   ├── processors.py        # Border processing strategies
+│   │   └── interfaces.py        # Abstract interfaces
+│   ├── utils/                    # Utility functions
+│   │   ├── naming.py            # Filename generation
+│   │   ├── file_ops.py          # File operations
+│   │   └── metrics.py           # Performance tracking
+│   ├── services/                 # High-level services
+│   │   ├── province_service.py  # Province detection
+│   │   └── extraction_service.py # Extraction orchestration
+│   ├── config/                   # Configuration
+│   │   └── settings.py          # Settings dataclass
+│   └── weights/                  # YOLOv11 model weights
+│
+├── output/                        # Regular C1 images
+├── output_roi/                    # ROI images
+├── output_digits/                 # 🆕 Extracted vote digits
 └── README.md
 ```
 
@@ -387,19 +421,33 @@ pipenv install --dev                # All features
 
 ### Key Components
 
+**CLI Entry Point (`cli.py`)**: ~130 lines (78% reduction from 600+)
+- Thin orchestration layer using dependency injection
+- Workflow functions: `download_workflow()`, `autocrop_workflow()`
+- Creates DI container and delegates to services
+
+**CLI Core Services (`cli_core/services/`)**:
+- **MenuService**: All interactive questionary prompts
+- **DownloadService**: Scrapy subprocess orchestration
+- **AutoCropService**: YOLO extraction workflow coordination
+- **ProgressService**: tqdm progress bar wrapper
+
+**Data Provider (`cli_core/utils/data_provider.py`)**:
+- Lazy loading of location data from `cli_core/context/tps.json`
+- Query methods: `get_provinces()`, `get_regencies()`, `get_districts()`
+
+**Dependency Injection (`cli_core/injector.py`, `jumlah_suara_extractor/injector.py`)**:
+- Factory methods for service creation
+- Singleton pattern for shared resources
+- Lazy loading of optional dependencies (ultralytics)
+
 **Spider (`kawal_spider.py`)**:
 - Async `start()` method (Scrapy 2.13+)
 - Conditional extraction: regular vs ROI
 - District name mapping from village IDs
 - URL decoding for ROI images
 
-**CLI (`cli.py`)**:
-- Interactive prompts (questionary)
-- Resume detection logic
-- Progress bar management (tqdm)
-- Subprocess management with unbuffered output
-
-**Settings (`settings.py`)**:
+**Scrapy Settings (`kawal_pemilu_scraper/settings.py`)**:
 - AsyncIO policy for Windows
 - Playwright configuration
 - Image pipeline settings

@@ -4,7 +4,7 @@ FROM python:3.12-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for Playwright (minimal)
+# Install system dependencies for Playwright + OpenCV + YOLO
 RUN apt-get update && apt-get install -y \
     wget \
     ca-certificates \
@@ -27,15 +27,20 @@ RUN apt-get update && apt-get install -y \
     libxkbcommon0 \
     libxrandr2 \
     xdg-utils \
+    # Additional dependencies for OpenCV
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy setup files for dependency installation
 COPY setup.py ./
 COPY README.md ./
 
-# Install core Python dependencies using setup.py
-# Install only core dependencies (no extraction features by default)
-RUN pip install --no-cache-dir -e .
+# Install ALL Python dependencies including extraction features
+RUN pip install --no-cache-dir -e ".[extraction]"
 
 # Install Playwright browsers (only chromium for minimal size)
 RUN playwright install chromium && \
@@ -45,6 +50,7 @@ RUN playwright install chromium && \
 COPY cli.py ./
 COPY cli_core ./cli_core
 COPY kawal_pemilu_scraper ./kawal_pemilu_scraper
+COPY jumlah_suara_extractor ./jumlah_suara_extractor
 COPY scrapy.cfg ./
 
 # Create output directories

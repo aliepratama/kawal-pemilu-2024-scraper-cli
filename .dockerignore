@@ -17,6 +17,12 @@ Pipfile.lock
 output/
 output2/
 output_roi/
+output_digits/
+
+# Backup and temporary files
+*_old.py
+*_backup.py
+*.bak
 
 # Scrapy
 .scrapy/

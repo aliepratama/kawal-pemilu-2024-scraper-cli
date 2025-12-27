@@ -10,8 +10,9 @@ services:
       # Mount output directories to persist downloaded images
       - ./output:/app/output
       - ./output_roi:/app/output_roi
+      - ./output_digits:/app/output_digits
       # Mount context for location data (read-only)
-      - ./context:/app/context:ro
+      - ./cli_core/context:/app/cli_core/context:ro
     environment:
       - PYTHONUNBUFFERED=1
       - TERM=xterm-256color  # Better terminal support for questionary
